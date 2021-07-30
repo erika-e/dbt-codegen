@@ -6,6 +6,7 @@ Macros that generate dbt code, and log it to the command line.
 * [generate_source](#generate_source-source)
 * [generate_base_model](#generate_base_model-source)
 * [generate_model_yaml](#generate_model_yaml-source)
+* [generate_snapshot](#generate_snapshot-source)
 
 # Installation instructions
 New to dbt packages? Read more about them [here](https://docs.getdbt.com/docs/building-a-dbt-project/package-management/).
@@ -157,3 +158,59 @@ models:
 ```
 
 4. Paste the output in to a schema.yml file, and refactor as required.
+
+## generate_snapshot ([source](macros/generate_snapshot.sql))
+This macro generates the SQL for a snapshot, which you can then paste into a
+model.
+
+### Arguements
+* `snapshot_name` (required): The name of the table dbt creates for the snapshot.
+* `source_name` (required): The source you wish snapshot.
+* `table_name` (required): The source table you wish to snapshot.
+* `strategy` (optional): Defaults to timestamp which is the dbt recommended strategy. Use `check_cols` for the check_cols strategy.
+* `target_schema` (optional): Defaults to snapshots
+* `optional_args` (optional): Adds the two optional snapshot-specific configurations
+
+### Usage:
+1. Create a model.
+2. Copy the macro into a statement tab in the dbt Cloud IDE, or into an analysis file, and compile your code
+
+```
+{{ codegen.generate_snapshot(
+    snapshot_name='customers_snapshot',
+    source_name='raw_jaffle_shop',
+    table_name='customers'
+) }}
+```
+
+Alternatively, call the macro as an [operation](https://docs.getdbt.com/docs/using-operations):
+
+```
+$ dbt run-operation generate_snapshot --args '{"snapshot_name": "customers_snapshot", "source_name":"raw_jaffle_shop", "table_name":"customers"}'
+```
+
+3. The SQL for the snapshot model will be logged to the command line 
+
+```
+{{
+    config(
+
+        target_schema='snapshots',
+        strategy='timestamp',
+        updated_at = "",
+        unique_key = "",
+        
+    )
+}}
+
+
+{% snapshot customers_snapshot %}
+
+    select * from {{ source('raw_jaffle_shop', 'customers') }}
+
+{% endsnapshot %} 
+```
+
+4. Paste the output into a sql file in your snapshots directory and refactor as required.
+
+Note that you must populate the `unique_key` column and the column required by the strategy you have chosen -- `updated_at` for timestamp or `check_cols` for the `check` strategy.
